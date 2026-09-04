@@ -175,7 +175,7 @@ def generate_video_script(shop: str, detail: str) -> str:
     except Exception as e:
         return f"❌ generate_video_script 执行失败: {e}"
 
-def generate_image(prompt: str, model: str = "glm-4.6v") -> str:
+def generate_image(prompt: str, model: str = "glm-image") -> str:
     """
     根据提示词生成图片并保存到本地。
 
