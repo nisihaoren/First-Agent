@@ -181,7 +181,7 @@ def generate_image(prompt: str, model: str = "glm-image") -> str:
 
     参数：
         prompt (str): 生图提示词（自然语言描述）
-        model (str): 生图模型名，默认 "glm-4.6v"
+        model (str): 生图模型名，默认 "glm-image"
 
     返回：
         str: 本地保存路径（成功）或错误描述（失败）

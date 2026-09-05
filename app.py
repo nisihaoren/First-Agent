@@ -21,7 +21,16 @@ st.caption("输入店铺名称或粘贴探店笔记，一键生成小红书文�
 # 显示聊天历史（简单版，不加会话状态）
 if "messages" not in st.session_state:
     st.session_state.messages = []
-
+if "rednote" not in st.session_state:
+    st.session_state.rednote = ""
+if "shop_name" not in st.session_state:
+    st.session_state.shop_name = ""
+if "img_path" not in st.session_state:
+    st.session_state.img_path = None
+if "script_content" not in st.session_state:
+    st.session_state.script_content = ""
+if "obs_insights" not in st.session_state:
+    st.session_state.obs_insights = ""
 # 显示历史消息
 with st.expander("📜 查看聊天记录", expanded=False):
      for msg in st.session_state.messages:
@@ -61,6 +70,7 @@ if prompt := st.chat_input("例如：玉林路社区火锅，排队很长..."):
             try:
              insights=extract_shop_insights(prompt)
              obs_insights=json.dumps(insights,ensure_ascii=False, indent=2)
+             st.session_state.obs_insights = obs_insights
             except Exception as e:
                  insights = {}
                  obs_insights = f"提取失败：{e}"
@@ -70,19 +80,27 @@ if prompt := st.chat_input("例如：玉林路社区火锅，排队很长..."):
             status.update(label="✍️ 步骤 2/4：正在构思小红书爆款文案...", state="running")
             # 从 insights 中提取店铺名（取 vibe 字段或前几个字）
             shop_name=insights.get("vibe",'成都保障店铺')[:8]if insights else prompt[:8]
+            st.session_state.shop_name = shop_name
             details=f"爆款菜品：{insights.get('dishes','暂无')},氛围：{insights.get('vibe','暂无')}"if insights else prompt
             rednote=generate_rednote(shop_name,details)
+            st.session_state.rednote = rednote
             obs_rednote=rednote[:200]if len(rednote)>200 else rednote
+            st.session_state.obs_rednote =obs_rednote
+            
             # 第三步：生成配图（视情况，如果不想等太久，可以注释掉生图）
             status.update(label="🎨 步骤 3/4：正在生成高清配图...", state="running")
-            img_prompt=f"'美食摄影',{shop_name},{insights.get('vibe')},'高清','不要有错别字'"
+            img_prompt=f"'美食摄影',{st.session_state.shop_name},{insights.get('vibe')},高清,不要有错别字,生成对象必须准确"
             img_result=generate_image(img_prompt)
             if "❌" in img_result:
              img_path = None
-             obs_image = f"图片生成失败：{img_result}"
+             obs_ime = f"图片生成失败：{img_result}"
+             st.session_state.img_path = None
             else:
              img_path = img_result
-             obs_image = f"图片已保存至 {img_path}"
+             obs_img = f"图片已保存至 {img_path}"
+             st.session_state.img_path = img_path if img_path else None
+             st.session_state.obs_image = obs_img
+
 
             status.update(label="🎬 步骤 4/4：正在生成拍摄脚本...", state="running")
              
@@ -91,6 +109,7 @@ if prompt := st.chat_input("例如：玉林路社区火锅，排队很长..."):
             try:
               script_content=generate_video_script(shop_name,details)
               obs_script_content=script_content[:50] if len(script_content)>50 else script_content
+              st.session_state.script_content = script_content
             except Exception as e:
                 script_content = f"⚠️ 脚本生成失败：{e}"
                 obs_script_preview = "生成失败"
@@ -110,10 +129,10 @@ if prompt := st.chat_input("例如：玉林路社区火锅，排队很长..."):
               yield word + (" " if i < len(words) - 1 else "")
               time.sleep(0.05)
     
-        st.write_stream(stream_text(rednote))
+        st.write_stream(stream_text(st.session_state.rednote))
         st.divider()
         st.markdown("### 🎬 拍摄脚本")     # 脚本标题
-        st.markdown(script_content)
+        st.markdown(st.session_state.script_content)
         # 显示配图（如果有）
         if img_path and "❌" not in str(img_path):
             st.image(img_path, caption="🎨 AI 生成的配图")
@@ -123,16 +142,16 @@ if prompt := st.chat_input("例如：玉林路社区火锅，排队很长..."):
         with col1:
            st.download_button(
               label="📥 下载小红书文案",
-              data=obs_rednote,
-              file_name=f"{shop_name}_小红书文案.md",
+              data=st.session_state.rednote,
+              file_name=f"{st.session_state.shop_name}_小红书文案.md",
               mime="text/markdown"
            )
         with col2:
            if script_content and "失败" not in script_content:
               st.download_button(
               label="📥 下载拍摄脚本",
-              data=script_content,
-              file_name=f"{shop_name}_小红书文案.md",
+              data=st.session_state.script_content,
+              file_name=f"{st.session_state.shop_name}_分镜头脚本.md",
               mime="text/markdown"
            )
            else:
@@ -146,15 +165,15 @@ if prompt := st.chat_input("例如：玉林路社区火锅，排队很长..."):
             st.write(f"生成预览：{obs_rednote}")
             st.divider()
             st.text("📌 Thought 3 (生成配图)：")
-            st.write(obs_image)
+            st.write(st.session_state.img_path if st.session_state.img_path else "未生成配图")
             st.divider()
             st.text("📌 Thought 4 (生成拍摄脚本)：")
-            st.write(script_content)
+            st.write(st.session_state.script_content)
 
         
         # ---------- ⑤ 将助手回复存入 session_state (用于历史展示) ----------
         # 存入纯文本，方便后续在循环中显示（也可以存 Markdown，但这里简化为文本）
-        assistant_fully_reply=f"**生成文案:**\n{obs_rednote},**生成拍摄脚本：**\n{obs_script_content}"
-        if img_path and "❌" not in str(img_path):
-           assistant_fully_reply+=f"**生成配图:**{obs_image}"
+        assistant_fully_reply=f"**生成文案:**\n{st.session_state.rednote},**生成拍摄脚本：**\n{st.session_state.script_content}"
+        if img_path and "❌" not in str(st.session_state.img_path):
+           assistant_fully_reply+=f"**生成配图:**{st.session_state.obs_image}"
         st.session_state.messages.append({"role":"assistant","content":assistant_fully_reply})

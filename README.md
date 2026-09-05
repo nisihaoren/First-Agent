@@ -72,3 +72,5 @@ streamlit run app.py
 
 Agent 会自动提取卖点、生成文案、配图和拍摄脚本
 ```
+### 7.演示视频
+![Demo Video](./assets/demo.mp4)
